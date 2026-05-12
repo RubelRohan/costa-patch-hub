@@ -1,7 +1,6 @@
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const multer = require('multer');
-const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcrypt');
 const cors = require('cors');
@@ -14,50 +13,59 @@ app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
 
-// Create uploads folder
-if (!fs.existsSync('uploads')) {
-  fs.mkdirSync('uploads', { recursive: true });
-}
+// Create folders
+if (!fs.existsSync('uploads')) fs.mkdirSync('uploads', { recursive: true });
+if (!fs.existsSync('backups')) fs.mkdirSync('backups', { recursive: true });
 
-// Multer configuration
+// Multer Setup
 const upload = multer({ 
   dest: 'uploads/',
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only image files are allowed!'), false);
-    }
-  }
+  limits: { fileSize: 5 * 1024 * 1024 }
 });
 
-// ====================== ERROR HANDLING MIDDLEWARE ======================
+// ====================== DATABASE ======================
+const db = new sqlite3.Database('costa_patch.db');
+
+// ====================== AUTO BACKUP SYSTEM ======================
+function createBackup() {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const backupFile = `backups/costa_patch_${timestamp}.db`;
+  
+  fs.copyFile('costa_patch.db', backupFile, (err) => {
+    if (err) console.error('Backup failed:', err);
+    else {
+      console.log(`✅ Backup created: ${backupFile}`);
+      cleanupOldBackups();
+    }
+  });
+}
+
+function cleanupOldBackups() {
+  fs.readdir('backups', (err, files) => {
+    if (err) return;
+    const backups = files.filter(f => f.startsWith('costa_patch_')).sort().reverse();
+    backups.slice(7).forEach(file => {
+      fs.unlink(`backups/${file}`, () => {});
+    });
+  });
+}
+
+// Create backup on startup + daily
+createBackup();
+setInterval(createBackup, 24 * 60 * 60 * 1000);
+
+// ====================== ERROR HANDLER ======================
 const errorHandler = (err, req, res, next) => {
   console.error('❌ Error:', err);
-
-  if (err.message.includes('ENOENT')) {
-    return res.status(404).json({ success: false, message: 'File not found' });
-  }
-  if (err.code === 'SQLITE_CONSTRAINT') {
-    return res.status(400).json({ success: false, message: 'Data conflict error' });
-  }
-  if (err.message.includes('fileFilter')) {
-    return res.status(400).json({ success: false, message: 'Only image files allowed' });
-  }
-
-  res.status(500).json({
-    success: false,
+  res.status(500).json({ 
+    success: false, 
     message: 'Internal Server Error',
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined 
   });
 };
 
-// ====================== DATABASE SETUP ======================
-const db = new sqlite3.Database('costa_patch.db');
-
+// ====================== DB SETUP ======================
 db.serialize(() => {
-  // Stores Table
   db.run(`CREATE TABLE IF NOT EXISTS stores (
     id INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
@@ -65,7 +73,6 @@ db.serialize(() => {
     manager TEXT
   )`);
 
-  // Users Table
   db.run(`CREATE TABLE IF NOT EXISTS users (
     username TEXT PRIMARY KEY,
     password TEXT NOT NULL,
@@ -74,7 +81,6 @@ db.serialize(() => {
     storeId INTEGER
   )`);
 
-  // Entries Table
   db.run(`CREATE TABLE IF NOT EXISTS entries (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     date TEXT,
@@ -88,7 +94,7 @@ db.serialize(() => {
     photo TEXT
   )`);
 
-  // Seed Default Data
+  // Seed Data
   db.get("SELECT COUNT(*) as count FROM users", (err, row) => {
     if (row.count === 0) {
       const salt = bcrypt.genSaltSync(10);
@@ -109,11 +115,8 @@ db.serialize(() => {
 });
 
 // ====================== ROUTES ======================
+app.get('/', (req, res) => res.send('✅ Costa MK Patch Hub is running with Auto Backup!'));
 
-// Health Check
-app.get('/', (req, res) => res.send('✅ Costa MK Patch Hub API is running!'));
-
-// Stores CRUD
 app.get('/stores', (req, res, next) => {
   db.all("SELECT * FROM stores ORDER BY id", (err, rows) => {
     if (err) return next(err);
@@ -123,22 +126,19 @@ app.get('/stores', (req, res, next) => {
 
 app.post('/stores', (req, res, next) => {
   const { name, number, manager } = req.body;
-  if (!name) return res.status(400).json({ success: false, message: "Store name is required" });
-
-  db.run("INSERT INTO stores (name, number, manager) VALUES (?, ?, ?)",
-    [name, number, manager], function(err) {
-      if (err) return next(err);
-      res.json({ success: true, id: this.lastID });
-    });
+  if (!name) return res.status(400).json({ success: false, message: "Store name required" });
+  db.run("INSERT INTO stores (name, number, manager) VALUES (?, ?, ?)", [name, number, manager], function(err) {
+    if (err) return next(err);
+    res.json({ success: true, id: this.lastID });
+  });
 });
 
 app.put('/stores/:id', (req, res, next) => {
   const { name, number, manager } = req.body;
-  db.run("UPDATE stores SET name=?, number=?, manager=? WHERE id=?",
-    [name, number, manager, req.params.id], (err) => {
-      if (err) return next(err);
-      res.json({ success: true });
-    });
+  db.run("UPDATE stores SET name=?, number=?, manager=? WHERE id=?", [name, number, manager, req.params.id], (err) => {
+    if (err) return next(err);
+    res.json({ success: true });
+  });
 });
 
 app.delete('/stores/:id', (req, res, next) => {
@@ -148,7 +148,6 @@ app.delete('/stores/:id', (req, res, next) => {
   });
 });
 
-// Users
 app.get('/users', (req, res, next) => {
   db.all("SELECT username, role, name, storeId FROM users", (err, rows) => {
     if (err) return next(err);
@@ -156,7 +155,6 @@ app.get('/users', (req, res, next) => {
   });
 });
 
-// Login
 app.post('/login', async (req, res, next) => {
   const { username, password } = req.body;
   db.get("SELECT * FROM users WHERE username = ?", [username], async (err, user) => {
@@ -169,7 +167,6 @@ app.post('/login', async (req, res, next) => {
   });
 });
 
-// Change Password
 app.post('/change-password', async (req, res, next) => {
   const { username, oldPassword, newPassword } = req.body;
   db.get("SELECT password FROM users WHERE username = ?", [username], async (err, user) => {
@@ -184,17 +181,11 @@ app.post('/change-password', async (req, res, next) => {
   });
 });
 
-// New Entry with Photo
 app.post('/entry', upload.single('photo'), (req, res, next) => {
   const { storeId, manager, achievements, challenges, risks, opportunities, solutions } = req.body;
   const photo = req.file ? req.file.filename : null;
 
-  if (!storeId || !manager) {
-    return res.status(400).json({ success: false, message: "Missing required fields" });
-  }
-
-  db.run(`INSERT INTO entries 
-    (date, storeId, manager, achievements, challenges, risks, opportunities, solutions, photo)
+  db.run(`INSERT INTO entries (date, storeId, manager, achievements, challenges, risks, opportunities, solutions, photo)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [new Date().toISOString(), storeId, manager, achievements, challenges, risks, opportunities, solutions, photo],
     (err) => {
@@ -210,10 +201,14 @@ app.get('/entries', (req, res, next) => {
   });
 });
 
-// ====================== GLOBAL ERROR HANDLER ======================
+app.post('/backup', (req, res) => {
+  createBackup();
+  res.json({ success: true, message: "Manual backup triggered" });
+});
+
+// ====================== ERROR HANDLING ======================
 app.use(errorHandler);
 
-// 404 Handler
 app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' });
 });
@@ -221,7 +216,5 @@ app.use((req, res) => {
 // ====================== START SERVER ======================
 app.listen(PORT, () => {
   console.log(`🚀 Costa MK Patch Hub running at http://localhost:${PORT}`);
-  console.log(`📁 Database: costa_patch.db`);
-  console.log(`🖼️  Uploads: /uploads folder`);
-  console.log(`🌐 Ready for Render.com / Production`);
+  console.log(`💾 Auto Backups Enabled (Daily + on startup)`);
 });
