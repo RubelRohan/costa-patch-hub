@@ -1,0 +1,21 @@
+{
+  "name": "Costa MK Patch Hub",
+  "short_name": "Costa Patch",
+  "description": "Costa Coffee Area Manager Tool",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#F6F2EF",
+  "theme_color": "#6F263D",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/1046/1046783.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/1046/1046783.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
