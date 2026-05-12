@@ -9,7 +9,7 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
+// ====================== MIDDLEWARE ======================
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
@@ -19,24 +19,31 @@ if (!fs.existsSync('uploads')) {
   fs.mkdirSync('uploads', { recursive: true });
 }
 
+// Multer configuration
 const upload = multer({ 
   dest: 'uploads/',
-  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed!'), false);
+    }
+  }
 });
-
-// Database
-const db = new sqlite3.Database('costa_patch.db');
 
 // ====================== ERROR HANDLING MIDDLEWARE ======================
 const errorHandler = (err, req, res, next) => {
-  console.error('Error:', err);
-  
-  if (err.code === 'SQLITE_CONSTRAINT') {
-    return res.status(400).json({ success: false, message: 'Database constraint error' });
-  }
-  
+  console.error('❌ Error:', err);
+
   if (err.message.includes('ENOENT')) {
     return res.status(404).json({ success: false, message: 'File not found' });
+  }
+  if (err.code === 'SQLITE_CONSTRAINT') {
+    return res.status(400).json({ success: false, message: 'Data conflict error' });
+  }
+  if (err.message.includes('fileFilter')) {
+    return res.status(400).json({ success: false, message: 'Only image files allowed' });
   }
 
   res.status(500).json({
@@ -47,18 +54,66 @@ const errorHandler = (err, req, res, next) => {
 };
 
 // ====================== DATABASE SETUP ======================
-db.serialize(() => {
-  db.run(`CREATE TABLE IF NOT EXISTS stores (...)`); // your existing tables
-  db.run(`CREATE TABLE IF NOT EXISTS users (...)`);
-  db.run(`CREATE TABLE IF NOT EXISTS entries (...)`);
+const db = new sqlite3.Database('costa_patch.db');
 
-  // Seed default data (same as before)
-  // ... (keep your existing seeding code here)
+db.serialize(() => {
+  // Stores Table
+  db.run(`CREATE TABLE IF NOT EXISTS stores (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    number TEXT,
+    manager TEXT
+  )`);
+
+  // Users Table
+  db.run(`CREATE TABLE IF NOT EXISTS users (
+    username TEXT PRIMARY KEY,
+    password TEXT NOT NULL,
+    role TEXT NOT NULL,
+    name TEXT NOT NULL,
+    storeId INTEGER
+  )`);
+
+  // Entries Table
+  db.run(`CREATE TABLE IF NOT EXISTS entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT,
+    storeId INTEGER,
+    manager TEXT,
+    achievements TEXT,
+    challenges TEXT,
+    risks TEXT,
+    opportunities TEXT,
+    solutions TEXT,
+    photo TEXT
+  )`);
+
+  // Seed Default Data
+  db.get("SELECT COUNT(*) as count FROM users", (err, row) => {
+    if (row.count === 0) {
+      const salt = bcrypt.genSaltSync(10);
+      db.run("INSERT INTO users VALUES (?, ?, ?, ?, ?)", ["admin", bcrypt.hashSync("admin", salt), "area", "Rubel Rohan", null]);
+      db.run("INSERT INTO users VALUES (?, ?, ?, ?, ?)", ["johnsmith", bcrypt.hashSync("1234", salt), "manager", "John Smith", 1]);
+      db.run("INSERT INTO users VALUES (?, ?, ?, ?, ?)", ["sarahpatel", bcrypt.hashSync("1234", salt), "manager", "Sarah Patel", 2]);
+      db.run("INSERT INTO users VALUES (?, ?, ?, ?, ?)", ["michaelbrown", bcrypt.hashSync("1234", salt), "manager", "Michael Brown", 3]);
+    }
+  });
+
+  db.get("SELECT COUNT(*) as count FROM stores", (err, row) => {
+    if (row.count === 0) {
+      db.run("INSERT INTO stores VALUES (1, 'Milton Keynes - Central', '1234', 'John Smith')");
+      db.run("INSERT INTO stores VALUES (2, 'Milton Keynes - Kingston', '5678', 'Sarah Patel')");
+      db.run("INSERT INTO stores VALUES (3, 'Bletchley', '9012', 'Michael Brown')");
+    }
+  });
 });
 
 // ====================== ROUTES ======================
-// Your existing routes here...
 
+// Health Check
+app.get('/', (req, res) => res.send('✅ Costa MK Patch Hub API is running!'));
+
+// Stores CRUD
 app.get('/stores', (req, res, next) => {
   db.all("SELECT * FROM stores ORDER BY id", (err, rows) => {
     if (err) return next(err);
@@ -77,19 +132,82 @@ app.post('/stores', (req, res, next) => {
     });
 });
 
-// ... (keep all your other routes: login, entry, users, etc.)
+app.put('/stores/:id', (req, res, next) => {
+  const { name, number, manager } = req.body;
+  db.run("UPDATE stores SET name=?, number=?, manager=? WHERE id=?",
+    [name, number, manager, req.params.id], (err) => {
+      if (err) return next(err);
+      res.json({ success: true });
+    });
+});
 
+app.delete('/stores/:id', (req, res, next) => {
+  db.run("DELETE FROM stores WHERE id=?", [req.params.id], (err) => {
+    if (err) return next(err);
+    res.json({ success: true });
+  });
+});
+
+// Users
+app.get('/users', (req, res, next) => {
+  db.all("SELECT username, role, name, storeId FROM users", (err, rows) => {
+    if (err) return next(err);
+    res.json(rows);
+  });
+});
+
+// Login
+app.post('/login', async (req, res, next) => {
+  const { username, password } = req.body;
+  db.get("SELECT * FROM users WHERE username = ?", [username], async (err, user) => {
+    if (err) return next(err);
+    if (user && await bcrypt.compare(password, user.password)) {
+      res.json({ success: true, user });
+    } else {
+      res.status(401).json({ success: false, message: "Invalid credentials" });
+    }
+  });
+});
+
+// Change Password
+app.post('/change-password', async (req, res, next) => {
+  const { username, oldPassword, newPassword } = req.body;
+  db.get("SELECT password FROM users WHERE username = ?", [username], async (err, user) => {
+    if (err) return next(err);
+    if (user && await bcrypt.compare(oldPassword, user.password)) {
+      const hash = await bcrypt.hash(newPassword, 10);
+      db.run("UPDATE users SET password = ? WHERE username = ?", [hash, username]);
+      res.json({ success: true });
+    } else {
+      res.status(401).json({ success: false, message: "Old password incorrect" });
+    }
+  });
+});
+
+// New Entry with Photo
 app.post('/entry', upload.single('photo'), (req, res, next) => {
   const { storeId, manager, achievements, challenges, risks, opportunities, solutions } = req.body;
   const photo = req.file ? req.file.filename : null;
 
-  db.run(`INSERT INTO entries (date, storeId, manager, achievements, challenges, risks, opportunities, solutions, photo)
+  if (!storeId || !manager) {
+    return res.status(400).json({ success: false, message: "Missing required fields" });
+  }
+
+  db.run(`INSERT INTO entries 
+    (date, storeId, manager, achievements, challenges, risks, opportunities, solutions, photo)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [new Date().toISOString(), storeId, manager, achievements, challenges, risks, opportunities, solutions, photo],
     (err) => {
       if (err) return next(err);
       res.json({ success: true });
     });
+});
+
+app.get('/entries', (req, res, next) => {
+  db.all("SELECT * FROM entries ORDER BY date DESC", (err, rows) => {
+    if (err) return next(err);
+    res.json(rows);
+  });
 });
 
 // ====================== GLOBAL ERROR HANDLER ======================
@@ -100,9 +218,10 @@ app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' });
 });
 
-// Start Server
+// ====================== START SERVER ======================
 app.listen(PORT, () => {
   console.log(`🚀 Costa MK Patch Hub running at http://localhost:${PORT}`);
   console.log(`📁 Database: costa_patch.db`);
-  console.log(`🖼️  Photos: /uploads folder`);
+  console.log(`🖼️  Uploads: /uploads folder`);
+  console.log(`🌐 Ready for Render.com / Production`);
 });
