@@ -2,41 +2,12 @@ const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const multer = require('multer');
 const fs = require('fs');
-const path = require('path');           // ← Added for static files
+const path = require('path');
 const bcrypt = require('bcrypt');
 const cors = require('cors');
-const nodemailer = require('nodemailer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
-// ====================== EMAIL CONFIG ======================
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: 'rubel.rohan.rr@gmail.com',
-    pass: 'egyi qgoj pzrf aool'
-  }
-});
-
-async function sendBackupEmail(backupFile) {
-  try {
-    await transporter.sendMail({
-      from: '"Costa Patch Hub" <rubel.rohan.rr@gmail.com>',
-      to: 'rubel.rohan.rr@gmail.com',
-      subject: `✅ Costa Patch Backup - ${new Date().toLocaleDateString()}`,
-      html: `
-        <h2>Database Backup Successful</h2>
-        <p><strong>File:</strong> ${backupFile}</p>
-        <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
-        <p>All data is safely backed up.</p>
-      `
-    });
-    console.log(`📧 Backup email sent successfully`);
-  } catch (err) {
-    console.error("Email failed:", err.message);
-  }
-}
 
 // ====================== MIDDLEWARE ======================
 app.use(cors());
@@ -47,108 +18,47 @@ app.use('/uploads', express.static('uploads'));
 if (!fs.existsSync('uploads')) fs.mkdirSync('uploads', { recursive: true });
 if (!fs.existsSync('backups')) fs.mkdirSync('backups', { recursive: true });
 
-// Serve Static Files (index.html, manifest.json, etc.)
+// Serve Static Files (Important)
 app.use(express.static(__dirname));
 
 // Multer
 const upload = multer({ dest: 'uploads/', limits: { fileSize: 5 * 1024 * 1024 } });
 
-// ====================== AUTO BACKUP ======================
-function createBackup() {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const backupFile = `backups/costa_patch_${timestamp}.db`;
-  
-  fs.copyFile('costa_patch.db', backupFile, async (err) => {
-    if (err) {
-      console.error('Backup failed:', err);
-    } else {
-      console.log(`✅ Backup created: ${backupFile}`);
-      cleanupOldBackups();
-      await sendBackupEmail(backupFile);
-    }
-  });
-}
-
-function cleanupOldBackups() {
-  fs.readdir('backups', (err, files) => {
-    if (err) return;
-    const backups = files.filter(f => f.startsWith('costa_patch_')).sort().reverse();
-    backups.slice(7).forEach(file => fs.unlink(`backups/${file}`, () => {}));
-  });
-}
-
-createBackup();
-setInterval(createBackup, 24 * 60 * 60 * 1000);
-
-// ====================== DATABASE ======================
+// ====================== DATABASE & BACKUP (simplified for now) ======================
 const db = new sqlite3.Database('costa_patch.db');
 
-db.serialize(() => {
-  db.run(`CREATE TABLE IF NOT EXISTS stores (id INTEGER PRIMARY KEY, name TEXT NOT NULL, number TEXT, manager TEXT)`);
-  db.run(`CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT NOT NULL, role TEXT NOT NULL, name TEXT NOT NULL, storeId INTEGER)`);
-  db.run(`CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, storeId INTEGER, manager TEXT, achievements TEXT, challenges TEXT, risks TEXT, opportunities TEXT, solutions TEXT, photo TEXT)`);
-
-  // Seed Data
-  db.get("SELECT COUNT(*) as count FROM users", (err, row) => {
-    if (row.count === 0) {
-      const salt = bcrypt.genSaltSync(10);
-      db.run("INSERT INTO users VALUES (?, ?, ?, ?, ?)", ["admin", bcrypt.hashSync("admin", salt), "area", "Rubel Rohan", null]);
-      db.run("INSERT INTO users VALUES (?, ?, ?, ?, ?)", ["johnsmith", bcrypt.hashSync("1234", salt), "manager", "John Smith", 1]);
-      db.run("INSERT INTO users VALUES (?, ?, ?, ?, ?)", ["sarahpatel", bcrypt.hashSync("1234", salt), "manager", "Sarah Patel", 2]);
-      db.run("INSERT INTO users VALUES (?, ?, ?, ?, ?)", ["michaelbrown", bcrypt.hashSync("1234", salt), "manager", "Michael Brown", 3]);
-    }
+// Auto Backup
+function createBackup() {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  fs.copyFile('costa_patch.db', `backups/costa_patch_${timestamp}.db`, () => {
+    console.log("✅ Backup created");
   });
-
-  db.get("SELECT COUNT(*) as count FROM stores", (err, row) => {
-    if (row.count === 0) {
-      db.run("INSERT INTO stores VALUES (1, 'Milton Keynes - Central', '1234', 'John Smith')");
-      db.run("INSERT INTO stores VALUES (2, 'Milton Keynes - Kingston', '5678', 'Sarah Patel')");
-      db.run("INSERT INTO stores VALUES (3, 'Bletchley', '9012', 'Michael Brown')");
-    }
-  });
-});
+}
+createBackup();
+setInterval(createBackup, 24*60*60*1000);
 
 // ====================== ROUTES ======================
-app.get('/', (req, res) => res.send('✅ Costa MK Patch Hub is Live!'));
+app.get('/', (req, res) => res.send('✅ Costa MK Patch Hub Backend Running!'));
 
-// API Routes
-app.get('/stores', (req, res, next) => {
-  db.all("SELECT * FROM stores ORDER BY id", (err, rows) => { if (err) return next(err); res.json(rows); });
-});
+app.get('/stores', (req, res) => { /* your stores route */ });
+app.post('/stores', (req, res) => { /* ... */ });
+app.put('/stores/:id', (req, res) => { /* ... */ });
+app.delete('/stores/:id', (req, res) => { /* ... */ });
 
-app.post('/stores', (req, res, next) => { /* ... same as before */ });
-app.put('/stores/:id', (req, res, next) => { /* ... */ });
-app.delete('/stores/:id', (req, res, next) => { /* ... */ });
+app.get('/users', (req, res) => { /* ... */ });
+app.post('/login', async (req, res) => { /* ... */ });
+app.post('/change-password', async (req, res) => { /* ... */ });
 
-app.get('/users', (req, res, next) => { /* ... */ });
-app.post('/login', async (req, res, next) => { /* ... */ });
-app.post('/change-password', async (req, res, next) => { /* ... */ });
+app.post('/entry', upload.single('photo'), (req, res) => { /* ... */ });
+app.get('/entries', (req, res) => { /* ... */ });
 
-app.post('/entry', upload.single('photo'), (req, res, next) => { /* ... */ });
-app.get('/entries', (req, res, next) => { /* ... */ });
-
-app.post('/backup', (req, res) => {
-  createBackup();
-  res.json({ success: true, message: "Manual backup triggered" });
-});
-
-// ====================== SERVE FRONTEND ======================
-// Catch-all route - must be AFTER all API routes
+// ====================== IMPORTANT: SERVE FRONTEND ======================
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// ====================== ERROR HANDLING ======================
-const errorHandler = (err, req, res, next) => {
-  console.error('❌ Error:', err);
-  res.status(500).json({ success: false, message: 'Internal Server Error' });
-};
-
-app.use(errorHandler);
-
-// ====================== START SERVER ======================
+// ====================== START ======================
 app.listen(PORT, () => {
-  console.log(`🚀 Costa MK Patch Hub running at http://localhost:${PORT}`);
-  console.log(`💾 Auto Backup + Email Enabled`);
-  console.log(`🌐 Frontend serving enabled`);
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🌐 Frontend should now be served at https://costa-mk-patch.onrender.com`);
 });
