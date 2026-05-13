@@ -6,69 +6,75 @@
   <title>Costa MK Patch Hub</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body { background: #F6F2EF; font-family: system-ui; }
-    .btn { background: #6F263D; color: white; padding: 16px; border-radius: 12px; font-weight: 600; }
+    body { background: #F6F2EF; font-family: system-ui, sans-serif; }
+    .btn { background: #6F263D; color: white; padding: 16px; border-radius: 9999px; font-weight: 600; width: 100%; }
   </style>
 </head>
-<body class="p-6 max-w-md mx-auto">
+<body class="p-6">
 
+<div class="max-w-md mx-auto">
   <div id="login-screen">
     <div class="text-center mb-10">
       <span class="text-6xl">☕</span>
-      <h1 class="text-3xl font-bold text-[#6F263D] mt-4">Costa MK Patch Hub</h1>
+      <h1 class="text-3xl font-bold mt-4 text-[#6F263D]">Costa MK Patch Hub</h1>
+      <p class="text-gray-600">Milton Keynes Patch</p>
     </div>
-    <input id="username" placeholder="Username" class="w-full p-4 border rounded-2xl mb-4" value="admin">
-    <input id="password" type="password" placeholder="Password" class="w-full p-4 border rounded-2xl mb-6" value="admin">
-    <button onclick="login()" class="btn w-full">Login</button>
-    <p class="text-center text-xs text-gray-500 mt-6">Demo: admin / admin</p>
+    
+    <input id="username" value="admin" placeholder="Username" class="w-full p-4 border rounded-2xl mb-4">
+    <input id="password" value="admin" type="password" placeholder="Password" class="w-full p-4 border rounded-2xl mb-6">
+    <button onclick="login()" class="btn">Login</button>
+    
+    <div id="status" class="mt-4 text-center text-sm"></div>
   </div>
 
-  <div id="main-app" class="hidden text-center py-10">
-    <h2 class="text-2xl font-bold text-green-600">✅ Login Successful!</h2>
-    <p id="welcome-name" class="mt-4 text-lg"></p>
+  <div id="main-app" class="hidden text-center py-12">
+    <h2 class="text-3xl font-bold text-green-600">✅ Login Successful!</h2>
+    <p id="welcome" class="mt-6 text-lg"></p>
+    <button onclick="location.reload()" class="mt-8 text-red-600 font-medium">Logout</button>
   </div>
-
-  <div id="error-log" class="mt-8 text-xs text-red-600"></div>
+</div>
 
 <script>
   const API_BASE = window.location.origin;
+  console.log("App started. API_BASE =", API_BASE);
 
   async function login() {
     const username = document.getElementById('username').value.trim().toLowerCase();
     const password = document.getElementById('password').value;
-    const errorLog = document.getElementById('error-log');
+    const status = document.getElementById('status');
 
-    errorLog.innerHTML = "Attempting login...";
+    status.innerHTML = `<span class="text-blue-600">Connecting to server...</span>`;
 
     try {
-      const res = await fetch(API_BASE + '/login', {
+      console.log("Sending login request to:", API_BASE + "/login");
+
+      const response = await fetch(API_BASE + '/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
       });
 
-      const data = await res.json();
-      console.log("Server Response:", data);
+      console.log("Response status:", response.status);
+
+      const data = await response.json();
+      console.log("Server response data:", data);
 
       if (data.success) {
+        status.innerHTML = `<span class="text-green-600">Login successful!</span>`;
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('main-app').classList.remove('hidden');
-        document.getElementById('welcome-name').textContent = `Welcome, ${data.user.name || username}!`;
+        document.getElementById('welcome').innerHTML = `Welcome, <strong>${data.user.name || username}</strong>!`;
       } else {
-        errorLog.innerHTML = `❌ Login Failed: ${data.message || 'Invalid credentials'}`;
+        status.innerHTML = `<span class="text-red-600">❌ ${data.message || 'Login failed'}</span>`;
       }
     } catch (err) {
-      console.error(err);
-      errorLog.innerHTML = `❌ Connection Error: ${err.message}<br>API_BASE: ${API_BASE}`;
+      console.error("Fetch error:", err);
+      status.innerHTML = `<span class="text-red-600">❌ Cannot connect to server.<br>${err.message}</span>`;
     }
   }
 
-  // Auto try with demo credentials after 1 second (for testing)
-  setTimeout(() => {
-    if (document.getElementById('login-screen').style.display !== 'none') {
-      console.log("Auto-testing login...");
-    }
-  }, 1000);
+  // Auto focus password field
+  document.getElementById('password').focus();
 </script>
 </body>
 </html>
