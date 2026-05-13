@@ -7,74 +7,70 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { background: #F6F2EF; font-family: system-ui, sans-serif; }
-    .btn { background: #6F263D; color: white; padding: 16px; border-radius: 9999px; font-weight: 600; width: 100%; }
+    .btn { background: #6F263D; color: white; padding: 16px; border-radius: 9999px; font-weight: 600; }
   </style>
 </head>
-<body class="p-6">
+<body class="p-6 max-w-md mx-auto">
 
-<div class="max-w-md mx-auto">
   <div id="login-screen">
     <div class="text-center mb-10">
       <span class="text-6xl">☕</span>
       <h1 class="text-3xl font-bold mt-4 text-[#6F263D]">Costa MK Patch Hub</h1>
-      <p class="text-gray-600">Milton Keynes Patch</p>
     </div>
-    
     <input id="username" value="admin" placeholder="Username" class="w-full p-4 border rounded-2xl mb-4">
     <input id="password" value="admin" type="password" placeholder="Password" class="w-full p-4 border rounded-2xl mb-6">
-    <button onclick="login()" class="btn">Login</button>
-    
-    <div id="status" class="mt-4 text-center text-sm"></div>
+    <button onclick="login()" class="btn w-full">Login</button>
+    <div id="status" class="mt-4 text-center text-sm min-h-[24px]"></div>
   </div>
 
   <div id="main-app" class="hidden text-center py-12">
     <h2 class="text-3xl font-bold text-green-600">✅ Login Successful!</h2>
     <p id="welcome" class="mt-6 text-lg"></p>
-    <button onclick="location.reload()" class="mt-8 text-red-600 font-medium">Logout</button>
   </div>
-</div>
 
 <script>
   const API_BASE = window.location.origin;
-  console.log("App started. API_BASE =", API_BASE);
 
   async function login() {
     const username = document.getElementById('username').value.trim().toLowerCase();
     const password = document.getElementById('password').value;
     const status = document.getElementById('status');
 
-    status.innerHTML = `<span class="text-blue-600">Connecting to server...</span>`;
+    status.innerHTML = '🔄 Connecting to server...';
 
     try {
-      console.log("Sending login request to:", API_BASE + "/login");
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
       const response = await fetch(API_BASE + '/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ username, password }),
+        signal: controller.signal
       });
 
-      console.log("Response status:", response.status);
+      clearTimeout(timeout);
 
       const data = await response.json();
-      console.log("Server response data:", data);
+      console.log("Server Response:", data);
 
       if (data.success) {
-        status.innerHTML = `<span class="text-green-600">Login successful!</span>`;
+        status.innerHTML = '✅ Login Successful!';
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('main-app').classList.remove('hidden');
         document.getElementById('welcome').innerHTML = `Welcome, <strong>${data.user.name || username}</strong>!`;
       } else {
-        status.innerHTML = `<span class="text-red-600">❌ ${data.message || 'Login failed'}</span>`;
+        status.innerHTML = `❌ ${data.message || 'Login Failed'}`;
       }
     } catch (err) {
-      console.error("Fetch error:", err);
-      status.innerHTML = `<span class="text-red-600">❌ Cannot connect to server.<br>${err.message}</span>`;
+      console.error(err);
+      if (err.name === 'AbortError') {
+        status.innerHTML = '❌ Request timed out. Server may be sleeping.';
+      } else {
+        status.innerHTML = `❌ Connection Error<br><small>${err.message}</small>`;
+      }
     }
   }
-
-  // Auto focus password field
-  document.getElementById('password').focus();
 </script>
 </body>
 </html>
