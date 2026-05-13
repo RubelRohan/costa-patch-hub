@@ -66,6 +66,14 @@ setInterval(async () => {
 }, 14 * 60 * 1000); // every 14 minutes
 
 // ====================== START ======================
+
+// Keep Render Free tier awake
+setInterval(() => {
+  fetch('https://costa-mk-patch-managers-insights.onrender.com')
+    .then(() => console.log('Keep-alive ping sent'))
+    .catch(() => {});
+}, 14 * 60 * 1000); // Every 14 minutes
+
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌐 Frontend should now be served at https://costa-mk-patch.onrender.com`);
