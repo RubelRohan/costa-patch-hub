@@ -5,37 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Costa MK Patch Hub</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
   <style>
-    body { background: #F6F2EF; font-family: 'Segoe UI', sans-serif; }
-    .btn-costa { background: #6F263D; color: white; }
-    .btn-costa:hover { background: #8B3A56; }
+    body { background: #F6F2EF; }
+    .btn { background: #6F263D; color: white; padding: 16px; border-radius: 9999px; font-weight: 600; }
   </style>
 </head>
-<body class="min-h-screen p-6">
+<body class="p-6">
 
 <div class="max-w-md mx-auto">
-  <!-- Login Screen -->
   <div id="login-screen">
     <div class="text-center mb-10">
-      <span class="text-7xl">☕</span>
+      <span class="text-6xl">☕</span>
       <h1 class="text-3xl font-bold mt-4 text-[#6F263D]">Costa MK Patch Hub</h1>
-      <p class="text-gray-600">Milton Keynes Patch</p>
     </div>
     <input id="username" placeholder="Username" class="w-full p-4 border rounded-2xl mb-4 text-lg">
     <input id="password" type="password" placeholder="Password" class="w-full p-4 border rounded-2xl mb-6 text-lg">
-    <button onclick="login()" class="btn-costa w-full py-4 rounded-2xl text-lg font-semibold">Login</button>
+    <button onclick="login()" class="btn w-full">Login</button>
     <p class="text-center text-sm text-gray-500 mt-6">Demo: admin / admin</p>
   </div>
 
-  <!-- Main App -->
-  <div id="main-app" class="hidden">
-    <h1 class="text-2xl font-bold text-[#6F263D] mb-6">Welcome, <span id="welcome-name"></span>!</h1>
-    <p class="text-green-600 font-medium">✅ Login Successful!</p>
-    <div class="mt-8 p-6 bg-white rounded-3xl shadow">
-      <p class="text-gray-600">You are now logged in.</p>
-      <button onclick="logout()" class="mt-6 text-red-600">Logout</button>
-    </div>
+  <div id="main-app" class="hidden text-center">
+    <h2 class="text-2xl font-bold text-green-600 mt-10">Login Successful! 🎉</h2>
+    <p id="welcome" class="mt-4"></p>
+    <button onclick="logout()" class="mt-8 text-red-600">Logout</button>
   </div>
 </div>
 
@@ -46,47 +38,34 @@
     const username = document.getElementById('username').value.trim().toLowerCase();
     const password = document.getElementById('password').value;
 
-    if (!username || !password) {
-      alert("Please enter username and password");
-      return;
-    }
+    console.log("Attempting login to:", API_BASE + "/login");
 
     try {
-      console.log("Trying to login to:", API_BASE + "/login");
-
-      const response = await fetch(API_BASE + '/login', {
+      const res = await fetch(API_BASE + '/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
       });
 
-      const data = await response.json();
-      console.log("Login response:", data);
+      const data = await res.json();
+      console.log("Response from server:", data);
 
       if (data.success) {
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('main-app').classList.remove('hidden');
-        document.getElementById('welcome-name').textContent = data.user.name || username;
+        document.getElementById('welcome').innerHTML = `Welcome, <strong>${data.user.name || username}</strong>!`;
       } else {
-        alert(data.message || "Invalid credentials");
+        alert(data.message || "Login failed");
       }
-    } catch (error) {
-      console.error("Login error:", error);
-      alert("Cannot connect to server. Please make sure the backend is running.");
+    } catch (err) {
+      console.error(err);
+      alert("Connection failed. Check Render Logs.");
     }
   }
 
   function logout() {
-    document.getElementById('main-app').classList.add('hidden');
-    document.getElementById('login-screen').classList.remove('hidden');
-    document.getElementById('username').value = '';
-    document.getElementById('password').value = '';
+    location.reload();
   }
-
-  // Allow pressing Enter to login
-  document.getElementById('password').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') login();
-  });
 </script>
 </body>
 </html>
