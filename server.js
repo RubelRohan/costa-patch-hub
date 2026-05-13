@@ -4,38 +4,61 @@ const multer = require('multer');
 const fs = require('fs');
 const bcrypt = require('bcrypt');
 const cors = require('cors');
+const nodemailer = require('nodemailer');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// ====================== EMAIL CONFIG ======================
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'rubel.rohan.rr@gmail.com',
+    pass: 'egyi qgoj pzrf aool'
+  }
+});
+
+async function sendBackupEmail(backupFile) {
+  try {
+    await transporter.sendMail({
+      from: '"Costa Patch Hub" <rubel.rohan.rr@gmail.com>',
+      to: 'rubel.rohan.rr@gmail.com',
+      subject: `✅ Costa Patch Backup - ${new Date().toLocaleDateString()}`,
+      html: `
+        <h2>Database Backup Successful</h2>
+        <p><strong>File:</strong> ${backupFile}</p>
+        <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
+        <p>All data is safely backed up.</p>
+      `
+    });
+    console.log(`📧 Backup email sent to rubel.rohan.rr@gmail.com`);
+  } catch (err) {
+    console.error("Email failed:", err.message);
+  }
+}
 
 // ====================== MIDDLEWARE ======================
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
 
-// Create folders
 if (!fs.existsSync('uploads')) fs.mkdirSync('uploads', { recursive: true });
 if (!fs.existsSync('backups')) fs.mkdirSync('backups', { recursive: true });
 
-// Multer Setup
-const upload = multer({ 
-  dest: 'uploads/',
-  limits: { fileSize: 5 * 1024 * 1024 }
-});
+const upload = multer({ dest: 'uploads/', limits: { fileSize: 5 * 1024 * 1024 } });
 
-// ====================== DATABASE ======================
-const db = new sqlite3.Database('costa_patch.db');
-
-// ====================== AUTO BACKUP SYSTEM ======================
+// ====================== AUTO BACKUP ======================
 function createBackup() {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   const backupFile = `backups/costa_patch_${timestamp}.db`;
   
-  fs.copyFile('costa_patch.db', backupFile, (err) => {
-    if (err) console.error('Backup failed:', err);
-    else {
+  fs.copyFile('costa_patch.db', backupFile, async (err) => {
+    if (err) {
+      console.error('Backup failed:', err);
+    } else {
       console.log(`✅ Backup created: ${backupFile}`);
       cleanupOldBackups();
+      await sendBackupEmail(backupFile);
     }
   });
 }
@@ -44,55 +67,20 @@ function cleanupOldBackups() {
   fs.readdir('backups', (err, files) => {
     if (err) return;
     const backups = files.filter(f => f.startsWith('costa_patch_')).sort().reverse();
-    backups.slice(7).forEach(file => {
-      fs.unlink(`backups/${file}`, () => {});
-    });
+    backups.slice(7).forEach(file => fs.unlink(`backups/${file}`, () => {}));
   });
 }
 
-// Create backup on startup + daily
 createBackup();
-setInterval(createBackup, 24 * 60 * 60 * 1000);
+setInterval(createBackup, 24 * 60 * 60 * 1000); // Daily backup
 
-// ====================== ERROR HANDLER ======================
-const errorHandler = (err, req, res, next) => {
-  console.error('❌ Error:', err);
-  res.status(500).json({ 
-    success: false, 
-    message: 'Internal Server Error',
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined 
-  });
-};
+// ====================== DATABASE ======================
+const db = new sqlite3.Database('costa_patch.db');
 
-// ====================== DB SETUP ======================
 db.serialize(() => {
-  db.run(`CREATE TABLE IF NOT EXISTS stores (
-    id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    number TEXT,
-    manager TEXT
-  )`);
-
-  db.run(`CREATE TABLE IF NOT EXISTS users (
-    username TEXT PRIMARY KEY,
-    password TEXT NOT NULL,
-    role TEXT NOT NULL,
-    name TEXT NOT NULL,
-    storeId INTEGER
-  )`);
-
-  db.run(`CREATE TABLE IF NOT EXISTS entries (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    date TEXT,
-    storeId INTEGER,
-    manager TEXT,
-    achievements TEXT,
-    challenges TEXT,
-    risks TEXT,
-    opportunities TEXT,
-    solutions TEXT,
-    photo TEXT
-  )`);
+  db.run(`CREATE TABLE IF NOT EXISTS stores (id INTEGER PRIMARY KEY, name TEXT NOT NULL, number TEXT, manager TEXT)`);
+  db.run(`CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password TEXT NOT NULL, role TEXT NOT NULL, name TEXT NOT NULL, storeId INTEGER)`);
+  db.run(`CREATE TABLE IF NOT EXISTS entries (id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT, storeId INTEGER, manager TEXT, achievements TEXT, challenges TEXT, risks TEXT, opportunities TEXT, solutions TEXT, photo TEXT)`);
 
   // Seed Data
   db.get("SELECT COUNT(*) as count FROM users", (err, row) => {
@@ -115,13 +103,10 @@ db.serialize(() => {
 });
 
 // ====================== ROUTES ======================
-app.get('/', (req, res) => res.send('✅ Costa MK Patch Hub is running with Auto Backup!'));
+app.get('/', (req, res) => res.send('✅ Costa MK Patch Hub is Live with Auto Backup & Email!'));
 
 app.get('/stores', (req, res, next) => {
-  db.all("SELECT * FROM stores ORDER BY id", (err, rows) => {
-    if (err) return next(err);
-    res.json(rows);
-  });
+  db.all("SELECT * FROM stores ORDER BY id", (err, rows) => { if (err) return next(err); res.json(rows); });
 });
 
 app.post('/stores', (req, res, next) => {
@@ -149,10 +134,7 @@ app.delete('/stores/:id', (req, res, next) => {
 });
 
 app.get('/users', (req, res, next) => {
-  db.all("SELECT username, role, name, storeId FROM users", (err, rows) => {
-    if (err) return next(err);
-    res.json(rows);
-  });
+  db.all("SELECT username, role, name, storeId FROM users", (err, rows) => { if (err) return next(err); res.json(rows); });
 });
 
 app.post('/login', async (req, res, next) => {
@@ -207,14 +189,17 @@ app.post('/backup', (req, res) => {
 });
 
 // ====================== ERROR HANDLING ======================
-app.use(errorHandler);
+const errorHandler = (err, req, res, next) => {
+  console.error('❌ Error:', err);
+  res.status(500).json({ success: false, message: 'Internal Server Error' });
+};
 
-app.use((req, res) => {
-  res.status(404).json({ success: false, message: 'Route not found' });
-});
+app.use(errorHandler);
+app.use((req, res) => res.status(404).json({ success: false, message: 'Route not found' }));
 
 // ====================== START SERVER ======================
 app.listen(PORT, () => {
   console.log(`🚀 Costa MK Patch Hub running at http://localhost:${PORT}`);
-  console.log(`💾 Auto Backups Enabled (Daily + on startup)`);
+  console.log(`💾 Auto Backup + Email Notification ENABLED`);
+  console.log(`📧 Notifications sent to: rubel.rohan.rr@gmail.com`);
 });
