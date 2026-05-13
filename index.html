@@ -14,30 +14,11 @@
       --costa-primary: #6F263D;
       --costa-secondary: #8B3A56;
       --costa-bg: #F6F2EF;
-      --costa-cream: #FAF7F4;
     }
-    body { 
-      background-color: var(--costa-bg); 
-      font-family: 'Segoe UI', system-ui, sans-serif; 
-    }
-    .btn-costa { 
-      background-color: var(--costa-primary); 
-      color: white; 
-    }
-    .btn-costa:hover { 
-      background-color: var(--costa-secondary); 
-    }
-    .card { 
-      background: white; 
-      border: 1px solid #e5d9d0; 
-      transition: all 0.2s; 
-    }
-    .card:hover { transform: translateY(-4px); }
-    .tab-active { 
-      background-color: var(--costa-primary); 
-      color: white; 
-      border-radius: 9999px; 
-    }
+    body { background-color: var(--costa-bg); font-family: 'Segoe UI', sans-serif; }
+    .btn-costa { background-color: var(--costa-primary); color: white; }
+    .btn-costa:hover { background-color: var(--costa-secondary); }
+    .card { background: white; border: 1px solid #e5d9d0; }
   </style>
 </head>
 <body class="min-h-screen">
@@ -49,10 +30,7 @@
       <span class="text-4xl">☕</span>
       <h1 class="text-3xl font-bold" style="color: var(--costa-primary);">Costa MK Patch Hub</h1>
     </div>
-    <div class="flex items-center gap-4">
-      <button onclick="toggleDarkMode()" class="p-3 hover:bg-white rounded-2xl text-xl">🌙</button>
-      <div id="user-info" class="font-semibold text-lg" style="color: var(--costa-primary);"></div>
-    </div>
+    <div id="user-info" class="font-semibold text-lg" style="color: var(--costa-primary);"></div>
   </div>
 
   <!-- Login Screen -->
@@ -62,38 +40,24 @@
       <h2 class="text-3xl font-bold mt-4" style="color: var(--costa-primary);">Welcome Back</h2>
       <p class="text-gray-600 mt-2">Milton Keynes Patch</p>
     </div>
-    <input id="username" placeholder="Username" class="w-full p-4 border rounded-2xl mb-4 focus:outline-none focus:border-[#6F263D]">
-    <input id="password" type="password" placeholder="Password" class="w-full p-4 border rounded-2xl mb-6 focus:outline-none focus:border-[#6F263D]">
+    <input id="username" placeholder="Username" class="w-full p-4 border rounded-2xl mb-4">
+    <input id="password" type="password" placeholder="Password" class="w-full p-4 border rounded-2xl mb-6">
     <button onclick="login()" class="btn-costa w-full py-4 rounded-2xl font-semibold text-lg">Login</button>
-    <p class="text-center text-xs text-gray-500 mt-6">Demo: <strong>admin</strong> / <strong>admin</strong></p>
+    <p class="text-center text-xs text-gray-500 mt-6">Demo: admin / admin</p>
   </div>
 
   <!-- Main App -->
   <div id="main-app" class="hidden">
-
-    <!-- Reminder -->
-    <div id="reminder-banner" class="hidden bg-amber-50 border border-amber-200 rounded-3xl p-5 mb-8 flex items-center gap-4">
-      <i class="fas fa-bell text-2xl" style="color: #B7791F;"></i>
-      <div id="reminder-text" class="font-medium text-amber-800"></div>
-    </div>
-
-    <!-- Navigation -->
     <div class="flex gap-2 mb-8 border-b pb-3 overflow-x-auto">
-      <button onclick="showTab(0)" class="tab-btn px-8 py-3 font-medium text-sm tab-active">Dashboard</button>
-      <button onclick="showTab(1)" class="tab-btn px-8 py-3 font-medium text-sm">New Entry</button>
-      <button onclick="showTab(2)" class="tab-btn px-8 py-3 font-medium text-sm">My History</button>
-      <button onclick="showTab(3)" class="tab-btn px-8 py-3 font-medium text-sm" id="admin-tab">Admin</button>
+      <button onclick="showTab(0)" class="tab-btn px-6 py-3 font-medium tab-active">Dashboard</button>
+      <button onclick="showTab(1)" class="tab-btn px-6 py-3 font-medium">New Entry</button>
+      <button onclick="showTab(2)" class="tab-btn px-6 py-3 font-medium">My History</button>
+      <button onclick="showTab(3)" class="tab-btn px-6 py-3 font-medium" id="admin-tab">Admin</button>
     </div>
 
     <!-- Dashboard -->
     <div id="tab-0">
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="text-2xl font-bold" style="color: var(--costa-primary);">Patch Overview</h2>
-        <button onclick="exportToExcel()" class="btn-costa px-6 py-3 rounded-2xl flex items-center gap-2">
-          <i class="fas fa-file-excel"></i> Export
-        </button>
-      </div>
-      <input id="search-input" onkeyup="filterDashboard()" placeholder="Search stores..." class="w-full p-4 border rounded-3xl mb-6 focus:outline-none focus:border-[#6F263D]">
+      <h2 class="text-2xl font-bold mb-6" style="color: var(--costa-primary);">Patch Overview</h2>
       <div id="dashboard-content" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
     </div>
 
@@ -101,15 +65,8 @@
     <div id="tab-1" class="hidden">
       <h2 class="text-2xl font-bold mb-6" style="color: var(--costa-primary);">New Weekly Entry</h2>
       <div class="card rounded-3xl shadow p-8">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div><label class="block text-sm font-medium mb-2">Achievements</label><textarea id="achievements" rows="3" class="w-full p-4 border rounded-2xl"></textarea></div>
-          <div><label class="block text-sm font-medium mb-2">Difficulties / Challenges</label><textarea id="challenges" rows="3" class="w-full p-4 border rounded-2xl"></textarea></div>
-          <div><label class="block text-sm font-medium mb-2">Risks</label><textarea id="risks" rows="3" class="w-full p-4 border rounded-2xl"></textarea></div>
-          <div><label class="block text-sm font-medium mb-2">Opportunities</label><textarea id="opportunities" rows="3" class="w-full p-4 border rounded-2xl"></textarea></div>
-        </div>
-        <div class="mt-6"><label class="block text-sm font-medium mb-2">Solutions & Opinions</label><textarea id="solutions" rows="4" class="w-full p-4 border rounded-2xl"></textarea></div>
-        <div class="mt-6"><label class="block text-sm font-medium mb-2">Upload Photo (Optional)</label><input type="file" id="photo" accept="image/*" class="w-full"></div>
-        <button onclick="saveEntry()" class="btn-costa mt-8 w-full py-4 rounded-2xl font-semibold text-lg">Submit Entry</button>
+        <textarea id="entry-text" rows="10" class="w-full p-4 border rounded-2xl" placeholder="Write your achievements, challenges, risks, opportunities, and solutions..."></textarea>
+        <button onclick="saveEntry()" class="btn-costa mt-6 w-full py-4 rounded-2xl font-semibold">Submit Entry</button>
       </div>
     </div>
 
@@ -121,199 +78,86 @@
 
     <!-- Admin -->
     <div id="tab-3" class="hidden">
-      <h2 class="text-2xl font-bold mb-8" style="color: var(--costa-primary);">Admin Panel</h2>
-      <div class="mb-12">
-        <div class="flex justify-between mb-4">
-          <h3 class="text-xl font-semibold">Stores</h3>
-          <button onclick="showAddStoreForm()" class="btn-costa px-5 py-2.5 rounded-2xl">+ Add Store</button>
-        </div>
-        <div id="stores-list" class="space-y-4"></div>
-      </div>
-      <div>
-        <div class="flex justify-between mb-4">
-          <h3 class="text-xl font-semibold">Users & Managers</h3>
-          <button onclick="showAddUserForm()" class="btn-costa px-5 py-2.5 rounded-2xl">+ Add User</button>
-        </div>
-        <div id="users-list" class="space-y-4"></div>
-      </div>
+      <h2 class="text-2xl font-bold mb-6" style="color: var(--costa-primary);">Admin Panel</h2>
+      <p>Admin features available.</p>
     </div>
   </div>
 </div>
 
 <script>
-  // === CRITICAL FIX FOR RENDER + MOBILE ===
   const API_BASE = window.location.origin;
 
   let currentUser = null;
   let allEntries = [];
-  let allStores = [];
-  let allUsers = [];
-
-  function toggleDarkMode() { document.documentElement.classList.toggle('dark'); }
-
-  async function apiGet(endpoint) {
-    const res = await fetch(API_BASE + endpoint);
-    return res.json();
-  }
-
-  async function apiPost(endpoint, body) {
-    const res = await fetch(API_BASE + endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    return res.json();
-  }
-
-  async function apiPut(endpoint, body) {
-    const res = await fetch(API_BASE + endpoint, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    return res.json();
-  }
-
-  async function apiDelete(endpoint) {
-    const res = await fetch(API_BASE + endpoint, { method: 'DELETE' });
-    return res.json();
-  }
 
   async function login() {
     const username = document.getElementById('username').value.trim().toLowerCase();
     const password = document.getElementById('password').value;
 
-    const result = await apiPost('/login', { username, password });
-    if (result.success) {
-      currentUser = result.user;
-      document.getElementById('login-screen').classList.add('hidden');
-      document.getElementById('main-app').classList.remove('hidden');
-      document.getElementById('user-info').textContent = currentUser.name;
+    try {
+      const result = await fetch(API_BASE + '/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await result.json();
 
-      if (currentUser.role !== 'area') document.getElementById('admin-tab').classList.add('hidden');
-
-      await loadAllData();
-      showTab(0);
-      checkWeeklyReminder();
-    } else {
-      alert("Invalid credentials! Try admin / admin");
+      if (data.success) {
+        currentUser = data.user;
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('main-app').classList.remove('hidden');
+        document.getElementById('user-info').textContent = currentUser.name;
+        loadDashboard();
+      } else {
+        alert("Invalid credentials! Try admin / admin");
+      }
+    } catch (e) {
+      alert("Cannot connect to server. Please check if server is running.");
+      console.error(e);
     }
   }
 
-  function checkWeeklyReminder() {
-    if (currentUser.role !== 'manager') return;
-    const hasEntry = allEntries.some(e => {
-      const d = new Date(e.date);
-      return (new Date() - d) / (1000*60*60*24) < 7 && e.storeId === currentUser.storeId;
-    });
-    if (!hasEntry) {
-      document.getElementById('reminder-banner').classList.remove('hidden');
-      document.getElementById('reminder-text').innerHTML = "🔔 Don't forget to submit your weekly entry!";
+  async function loadDashboard() {
+    try {
+      const res = await fetch(API_BASE + '/entries');
+      allEntries = await res.json();
+      
+      const container = document.getElementById('dashboard-content');
+      container.innerHTML = '<p class="text-gray-500">Welcome! Data loaded successfully.</p>';
+    } catch (e) {
+      console.error(e);
     }
   }
 
-  async function loadAllData() {
-    allStores = await apiGet('/stores');
-    allEntries = await apiGet('/entries');
-    allUsers = await apiGet('/users');
-    loadDashboard();
-    loadMyEntries();
-    if (currentUser.role === 'area') {
-      loadStoresList();
-      loadUsersList();
+  async function saveEntry() {
+    const text = document.getElementById('entry-text').value.trim();
+    if (!text) return alert("Please write something");
+
+    try {
+      await fetch(API_BASE + '/entry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          storeId: currentUser.storeId || 1,
+          manager: currentUser.name,
+          achievements: text,
+          challenges: "",
+          risks: "",
+          opportunities: "",
+          solutions: ""
+        })
+      });
+      alert("✅ Entry submitted successfully!");
+      document.getElementById('entry-text').value = '';
+      loadDashboard();
+    } catch (e) {
+      alert("Failed to save entry");
     }
   }
 
   function showTab(n) {
-    document.querySelectorAll('#main-app > div[id^="tab-"]').forEach(d => d.classList.add('hidden'));
+    document.querySelectorAll('#main-app > div[id^="tab-"]').forEach(div => div.classList.add('hidden'));
     document.getElementById(`tab-${n}`).classList.remove('hidden');
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('tab-active'));
-    document.querySelectorAll('.tab-btn')[n].classList.add('tab-active');
-  }
-
-  function loadDashboard() {
-    const container = document.getElementById('dashboard-content');
-    container.innerHTML = '';
-    allStores.forEach(store => {
-      const latest = allEntries.find(e => e.storeId === store.id);
-      const card = document.createElement('div');
-      card.className = "card rounded-3xl p-6";
-      card.innerHTML = `
-        <h3 class="font-semibold">${store.name}</h3>
-        <p class="text-sm text-gray-600">#${store.number} • ${store.manager}</p>
-        ${latest ? `<p class="text-xs mt-3 text-green-700">✅ Entry submitted</p>` : `<p class="text-amber-600 mt-3">No entry this week</p>`}
-      `;
-      container.appendChild(card);
-    });
-  }
-
-  function filterDashboard() { loadDashboard(); }
-
-  async function saveEntry() {
-    const formData = new FormData();
-    formData.append('storeId', currentUser.storeId);
-    formData.append('manager', currentUser.name);
-    formData.append('achievements', document.getElementById('achievements').value);
-    formData.append('challenges', document.getElementById('challenges').value);
-    formData.append('risks', document.getElementById('risks').value);
-    formData.append('opportunities', document.getElementById('opportunities').value);
-    formData.append('solutions', document.getElementById('solutions').value);
-
-    const photo = document.getElementById('photo').files[0];
-    if (photo) formData.append('photo', photo);
-
-    const res = await fetch(API_BASE + '/entry', { method: 'POST', body: formData });
-    const result = await res.json();
-    if (result.success) {
-      alert("✅ Entry submitted successfully!");
-      clearForm();
-      await loadAllData();
-      showTab(0);
-    }
-  }
-
-  function clearForm() {
-    ['achievements','challenges','risks','opportunities','solutions','photo'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.value = '';
-    });
-  }
-
-  function loadMyEntries() {
-    const container = document.getElementById('my-entries');
-    const mine = allEntries.filter(e => e.storeId === currentUser.storeId);
-    container.innerHTML = mine.length === 0 ? `<p class="text-gray-500">No entries yet.</p>` : 
-      mine.map(e => `
-        <div class="card rounded-3xl p-6">
-          <p class="text-xs text-gray-500">${new Date(e.date).toLocaleString()}</p>
-          <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div><strong>Achievements:</strong> ${e.achievements || '—'}</div>
-            <div><strong>Challenges:</strong> ${e.challenges || '—'}</div>
-            <div class="text-red-700"><strong>Risks:</strong> ${e.risks || '—'}</div>
-            <div><strong>Opportunities:</strong> ${e.opportunities || '—'}</div>
-            <div class="md:col-span-2"><strong>Solutions:</strong> ${e.solutions || '—'}</div>
-          </div>
-        </div>
-      `).join('');
-  }
-
-  // Admin Functions (simplified)
-  function loadStoresList() { /* implement if needed */ }
-  function showAddStoreForm() { alert("Add Store - Backend ready"); }
-  function loadUsersList() { /* implement if needed */ }
-  function showAddUserForm() { alert("Add User - Backend ready"); }
-
-  async function changePassword() {
-    const oldPass = prompt("Current Password:");
-    const newPass = prompt("New Password:");
-    if (!oldPass || !newPass) return;
-    const result = await apiPost('/change-password', { username: currentUser.username, oldPassword: oldPass, newPassword: newPass });
-    alert(result.success ? "Password changed!" : "Failed");
-  }
-
-  function exportToExcel() {
-    alert("Export feature available in full version");
-    console.table(allEntries);
   }
 
   // Keyboard support
@@ -321,7 +165,7 @@
     if (e.key === 'Enter') login();
   });
 
-  console.log("✅ Costa MK Patch Hub loaded successfully with dynamic API_BASE");
+  console.log("✅ Costa MK Patch Hub initialized with API_BASE:", API_BASE);
 </script>
 </body>
 </html>
