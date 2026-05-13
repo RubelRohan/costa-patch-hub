@@ -57,6 +57,14 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// Keep Render awake
+setInterval(async () => {
+  try {
+    await fetch('https://costa-mk-patch-managers-insights.onrender.com');
+    console.log('Keep-alive ping sent');
+  } catch (e) {}
+}, 14 * 60 * 1000); // every 14 minutes
+
 // ====================== START ======================
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
